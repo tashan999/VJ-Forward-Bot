@@ -1,12 +1,25 @@
-FROM python:3.10.8-slim-buster
+# Use a supported Debian base (buster is archived → 404 on apt)
+FROM python:3.10-slim-bookworm
 
-RUN apt update && apt upgrade -y
-RUN apt install git -y
-COPY requirements.txt /requirements.txt
+# Optional but good practice
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-RUN cd /
-RUN pip3 install -U pip && pip3 install -U -r requirements.txt
-RUN mkdir /VJ-Forward-Bot
+# Install system deps (git) – no apt upgrade, and clean cache
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
 WORKDIR /VJ-Forward-Bot
-COPY . /VJ-Forward-Bot
-CMD gunicorn app:app & python3 main.py
+
+# Install Python dependencies
+COPY requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
+
+# Copy project files
+COPY . .
+
+# Start gunicorn + main.py
+CMD ["sh", "-c", "gunicorn app:app & python3 main.py"]
